@@ -3,24 +3,24 @@ import math, json
 
 
 def calculate_score(protocol, token, liquidity_value, collateral_value):
-    if protocol == 'dydx':
-        protocol_values = constants.dydx_values
+    if protocol == 'aave':
+        protocol_values = constants.aave_values
     elif protocol == 'compound':
         protocol_values = constants.compound_values
+    elif protocol == 'dydx':
+        protocol_values = constants.dydx_values
     elif protocol == 'fulcrum':
         protocol_values = constants.fulcrum_values
     elif protocol == 'nuo':
         protocol_values = constants.nuo_values
-    elif protocol == 'aave':
-        protocol_values = constants.aave_values
     else:
         protocol_values = constants.ddex_values
-    
+
     weights = constants.weights
     score = weights['engineeringWeeks'] * protocol_values['fourEngineeringWeeks'] + weights['publicAudit'] * protocol_values['publicAudit'] + weights['noCriticalVulns'] * protocol_values['noCriticalVulns'] + weights['recentOrNoCodeChanges'] * protocol_values['recentAuditOrNoCodeChanges'] + weights['timeIndex'] * protocol_values['timeIndex'] + weights['hasBugBounty'] * protocol_values['hasBugBounty'] + weights['cVaR'] * protocol_values['cvar'] + weights['poolCollateralization'] * collateral_value + weights['poolLiquidity'] * liquidity_value + weights['centralizationRisk'] * protocol_values['centralizationRisk']
     score = round(score, 2) * 10
     score = "{:.1f}".format(score)
-    result = {
+    return {
         'asset': token,
         'protocol': protocol,
         'metrics': {
@@ -28,10 +28,9 @@ def calculate_score(protocol, token, liquidity_value, collateral_value):
             'liquidityIndex': str(liquidity_value),
             'collateralIndex': str(collateral_value),
             'centralizationIndex': str(protocol_values['centralizationRisk']),
-            'timIndex': str(protocol_values['timeIndex'])
-        }
+            'timIndex': str(protocol_values['timeIndex']),
+        },
     }
-    return result
 
 def calculate_scores():
     # Get all pool data

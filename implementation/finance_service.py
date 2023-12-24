@@ -8,30 +8,30 @@ from . import constants, web3_service, pool_data_service
 
 # Used to find portfolio weights for an array of balances
 def getWeights(balances):
-    total = 0
     weights = []
-    for balance in balances:
-        total += balance['liquidity']
-    for balance in balances:
-        percentage = balance['liquidity']/total
-        weights.append(percentage)
+    total = sum(balance['liquidity'] for balance in balances)
+    weights.extend(balance['liquidity']/total for balance in balances)
     return weights
 
 # Used to find historical USD values for stablecoins
 def getCryptoCompareReturns(token):
     result = requests.get(f'https://min-api.cryptocompare.com/data/v2/histoday?fsym={token}&tsym=USD&limit=720')
     json = result.json()
-    df = pd.DataFrame([object for object in json['Data']['Data']])
+    df = pd.DataFrame(list(json['Data']['Data']))
     df.insert(0, 'Date', pd.to_datetime(df['time'],unit='s'))
     df.drop(['high', 'open', 'low', 'volumefrom', 'volumeto', 'conversionType', 'conversionSymbol', 'time'], axis=1, inplace=True)
     df.set_index('Date', inplace=True)
-    returns = df.copy().pct_change().fillna(value=0, axis=0).rename(columns={'close': f'daily_returns_{token}'})
-    return returns
+    return (
+        df.copy()
+        .pct_change()
+        .fillna(value=0, axis=0)
+        .rename(columns={'close': f'daily_returns_{token}'})
+    )
     
 # Used to find historical USD values for all coins but stablecoins      
 def getReturns(tokens): 
-    last_date = datetime.today().strftime('%Y-%m-%d')
-    first_date = (datetime.today() - timedelta(days=520)).strftime('%Y-%m-%d')
+    last_date = datetime.now().strftime('%Y-%m-%d')
+    first_date = (datetime.now() - timedelta(days=520)).strftime('%Y-%m-%d')
     df_list = []
     for token in tokens:
         if (token['token'] == 'wbtc'):
@@ -42,14 +42,12 @@ def getReturns(tokens):
             if token == 'SAI':
                 token = 'DAI'
             ticker_returns = getCryptoCompareReturns(token)
-            df_list.append(ticker_returns)
         else:
             ticker = f'{token}-USD'
             ticker_close = pdr.get_data_yahoo(ticker, first_date, last_date)[['Close']]
             ticker_returns = ticker_close.copy().pct_change().fillna(value=0, axis=0).rename(columns={'Close': f'daily_returns_{token}'})
-            df_list.append(ticker_returns)
-    df = reduce(lambda x, y: pd.merge(x, y, on = 'Date'), df_list)
-    return df
+        df_list.append(ticker_returns)
+    return reduce(lambda x, y: pd.merge(x, y, on = 'Date'), df_list)
 
 def value_at_risk(returns, weights, alpha=0.95, lookback_days=520):
     # Multiply asset returns by weights to get one weighted portfolio return
@@ -70,8 +68,7 @@ def generate_cvar_from_balances(balances):
     returns = getReturns(balances)
     returns = returns.fillna(0.0)
     portfolio_returns = returns.fillna(0.0).iloc[-520:].dot(weights)
-    portfolio_cvar = cvar(returns, weights, 0.99, 520)
-    return portfolio_cvar
+    return cvar(returns, weights, 0.99, 520)
 
 def EMACalc(m_array, m_range):
     k = 2/(m_range + 1)
@@ -82,7 +79,7 @@ def EMACalc(m_array, m_range):
     while i < m_range:
         ema_array.append(m_array[i] * k + ema_array[i - 1] * (1 - k))
         i += 1
-    return ema_array[len(ema_array) - 1]
+    return ema_array[-1]
 
 # Normalize value from a list of objects with predefined shape
 def normalize_data(val, list):

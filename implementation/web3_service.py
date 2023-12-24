@@ -15,12 +15,11 @@ def initializeContract(address, abi):
 
 # Used to find decimals value for a token
 def findDecimals(token): 
-    decimals = 0
-    if (token == 'wbtc'):
-        decimals = 8
-    elif (token == 'usdc' or token == 'usdt'):
-        decimals = 6
-    else:
-        decimals = 18
-    return decimals
+  decimals = 0
+  if (token == 'wbtc'):
+    return 8
+  elif token in ['usdc', 'usdt']:
+    return 6
+  else:
+    return 18
 
